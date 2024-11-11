@@ -1,0 +1,648 @@
+admin_panel.php
+<?php
+session_start();
+
+// Определение логина и пароля
+define('ADMIN_USERNAME', 'help');
+define('ADMIN_PASSWORD', 'helpme');
+include 'db.php'; // Подключение к базе данных
+
+// Аутентификация администратора
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+
+    if ($username === ADMIN_USERNAME && $password === ADMIN_PASSWORD) {
+        $_SESSION['admin'] = true; // Установка сессии администратора
+    } else {
+        $error = 'Неверный логин или пароль.';
+    }
+}
+
+// Проверка, вошел ли администратор в систему
+if (!isset($_SESSION['admin']) || $_SESSION['admin'] !== true) {
+    // Если не вошел, показываем форму входа
+    ?>
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>Вход для администратора</title>
+    </head>
+    <body>
+        <h2>Вход для администратора</h2>
+        <?php if (isset($error)) echo '<p style="color:red;">' . $error . '</p>'; ?>
+        <form method="POST">
+            <input type="text" name="username" placeholder="Логин" required>
+            <input type="password" name="password" placeholder="Пароль" required>
+            <button type="submit">Войти</button>
+        </form>
+    </body>
+    </html>
+    <?php
+    exit(); // Завершаем выполнение скрипта, если администратор не вошел
+}
+
+// Если пользователь администратор, получаем все заявки
+$stmt = $pdo->query("SELECT requests.*, users.full_name, users.department FROM requests JOIN users ON requests.user_id = users.id");
+$requests = $stmt->fetchAll();
+
+// Обработка изменения статуса заявки
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['status'])) {
+    $request_id = $_POST['request_id'];
+    $status = $_POST['status'];
+
+    $stmt = $pdo->prepare("UPDATE requests SET status = ? WHERE id = ?");
+    $stmt->execute([$status, $request_id]);
+    header("Location: admin_panel.php"); // Перезагрузка страницы
+    exit();
+}
+?>
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css.css">
+    <title>Панель администратора</title>
+</head>
+<body>
+    <div class="upper">
+        <div class="upper-text">
+            <h2>Демо экзамен</h2>
+        </div>
+        <div class="a">
+            <a href="login.php" class="upper-text-a">Вход</a>
+
+        </div>  
+    </div>
+    
+    <div class="container-tr">
+        <h1>Панель администратора</h1>
+        <table>
+            <tr>
+                <th>ФИО пользователя</th>
+                <th>Отдел</th>
+                <th>Категория</th>
+                <th>Описание</th>
+                <th>Статус</th>
+                <th>Изменить статус</th>
+            </tr>
+            <?php foreach ($requests as $request): ?>
+                <tr>
+                    <td><?= htmlspecialchars($request['full_name']) ?></td>
+                    <td><?= htmlspecialchars($request['department']) ?></td>
+                    <td><?= htmlspecialchars($request['category']) ?></td>
+                    <td><?= htmlspecialchars($request['description']) ?></td>
+                    <td><?= htmlspecialchars($request['status']) ?></td>
+                    <td>
+                        <form method="POST">
+                            <input type="hidden" name="request_id" value="<?= $request['id'] ?>">
+                            <select name="status">
+                                <option value="new" <?= $request['status'] == 'new' ? 'selected' : '' ?>>Новая</option>
+                                <option value="completed" <?= $request['status'] == 'completed' ? 'selected' : '' ?>>Завершена</option>
+                            </select>
+                            <button type="submit">Обновить</button>
+                        </form>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+create_request.php
+<?php
+session_start();
+include 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $user_id = $_SESSION['user_id'];
+    $category = $_POST['category'];
+    $description = $_POST['description'];
+
+    $stmt = $pdo->prepare("INSERT INTO requests (user_id, category, description, status) VALUES (?, ?, ?, 'new')");
+    if ($stmt->execute([$user_id, $category, $description])) {
+        echo "Заявка успешно создана!";
+    } else {
+        echo "Ошибка при создании заявки.";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css.css">
+    <title>Создание заявки</title>
+</head>
+<body>
+  <div class="row">
+    <div class="upper">
+        <div class="upper-text">
+          <h2> Демо экзамен </h2>
+       </div>
+       <div class="a">
+        <a href="login.php"class="upper-text-a">Bход</a>
+        <a href="admin.php" class="upper-text-a-1">Панель админа</a>
+    </div>  
+      </div>
+</div>
+<form method="post"class="container-1">
+  <div class="contact-form">
+    <h1>Создать заявления</h1>
+    <select name="category"class="uppe-select" required>
+    <option value="">Выберите категорию</option>
+        <option value="Техническая проблема">Техническая проблема</option>
+        <option value="Запрос информации">Запрос информации</option>
+    </select> 
+    <br>
+      <textarea name="description" placeholder="Описание проблемы" required></textarea>
+      <br>
+      <div class="buttlon">
+        <button type="submit" class="main-form-button buttlon">Создать заявку</button>
+        </div>
+  </div>
+</form>
+</body>
+</html>
+
+
+
+
+
+
+
+
+css.css
+.upper{
+    display: inline-block;
+    width: 100%;
+    height: 80px;
+    background-color: #00008B; 
+    border-radius: 20px; 
+}
+    
+.upper-text{
+    display: inline-block;
+    position: absolute;
+    left:  45px;    
+    top: -20px;
+    font-size: 30px;
+    color: #fff;
+} 
+.upper-text-a  {
+    display: inline-block;
+    position: absolute;
+    left:  85%;    
+    top:35px;
+    font-size: 20px;
+    color: #fff;
+} 
+.upper-text-a-1  {
+    display: inline-block;
+    position: absolute;
+    left: 76%;    
+    top:35px;
+    font-size: 20px;
+    color: #fff;
+}
+.upper-text-a-2  {
+    display: inline-block;
+    position: absolute;
+    left: 64.3%;    
+    top:35px;
+    font-size: 20px;
+    color: #fff;
+}
+
+h1 {
+    text-align: center;
+    color: #ffffff;
+}
+
+.container{
+    display: inline-block;
+    position: absolute;
+    left: 36%;
+    margin: 50px auto;
+    width: 400px;
+    height: 550px;
+    background-color: #00008B;
+    border-radius: 20px;  
+}
+.container-1{
+    display: inline-block;
+    position: absolute;
+    left: 36%;
+    margin: 100px auto;
+    width: 400px;
+    height: 270px;
+    background-color: #00008B;
+    border-radius: 20px;
+}
+.container-2{
+    display: inline-block;
+    position: absolute;
+    left: 36%;
+    margin: 100px auto;
+    width: 450px;
+    height: 300px;
+    background-color: #00008B;
+    border-radius: 20px;
+}
+.container-block{
+    display: inline-block;
+    position: absolute;
+    left: 36%;
+    margin: 100px auto;
+    width: 400px;
+    height: 300px;
+    background-color: #00008B;
+    border-radius: 20px;
+}
+.container-tr{
+    text-align: center; 
+    display: inline-block;
+    position: absolute;
+    left: 36%;
+    margin: 100px auto;
+    width: 600px;
+    height: 400px;
+    background-color: #00008B;
+    border-radius: 20px;
+}
+label {
+    display: block;
+    margin-top: 1px;
+    padding: 5px 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+input {
+    display: block;
+    width: 93%;
+    margin: auto;
+    padding: 13px;
+    border: none;
+    border-radius: 20px;
+    background: #ffffff;
+    opacity: 0.5;
+}
+
+input.submit {
+    width: 100%;
+    padding: 10px;
+    margin-top: 20px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #ffffff;
+    opacity: 1;
+    background-color: #ffffff;
+    cursor: pointer;
+}
+.uppe-select{
+    display: block;
+    width: 93%;
+    margin: auto;
+    padding: 13px;
+    border: none;
+    border-radius: 20px;
+    background: #ffffff;
+    opacity: 0.5;
+}
+.buttlon {
+    text-align: center;
+    margin: o auto;
+    margin-top: 1px;   
+    background-color: #ffffff;
+    color: #00008B;
+    padding: 0.1rem 0.3rem;
+    font-size: 1.1em;
+    text-transform: uppercase;
+    border: none;
+    transition: all 0.1s;
+    border-radius: 10px;
+}
+
+textarea{
+    display: block;
+    width: 93%;
+    margin: auto;
+    padding: 13px;
+    border: none;
+    border-radius: 20px;
+    background: #ffffff;
+    opacity: 0.5;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+th {
+    background-color: #f2f2f2;
+}
+tr:hover {
+    background-color: #f1f1f1;
+}
+li{
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+
+
+
+
+
+
+
+
+
+
+db.php
+<?php
+$host = 'localhost'; // адрес сервера
+$db = 'helpdesk'; // имя базы данных
+$user = 'root'; // имя пользователя
+$pass = ''; // пароль
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Не удалось подключиться к базе данных: " . $e->getMessage());
+}
+?>
+
+
+
+
+
+
+
+
+
+login.php
+<?php
+session_start();
+include 'db.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+
+    if ($user && password_verify($password, $user['password'])) {
+        $_SESSION['user_id'] = $user['id'];
+        header("Location: requests.php");
+        exit();
+    } else {
+        $error = "Неверный email или пароль.";
+    }
+}
+?>
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css.css">
+    <title>Авторизация</title>
+</head>
+<body>
+  <div class="row">
+    <div class="upper">
+        <div class="upper-text">
+          <h2> Демо экзамен </h2>
+       </div>
+       <div class="a"> 
+        <a href="admin.php" class="upper-text-a-1">Панель админа</a>
+        <a href="register.php"class="upper-text-a">Регистрация</a>
+    </div>  
+      </div>
+</div>
+    <?php if (isset($error)) echo "<p>$error</p>"; ?>
+    <form method="POST" class="container-block">
+    <h1>Авторизация</h1>
+    <label for="#">Адрес:<br>
+            <input type="email" id="email" name="email" placeholder="Введите постоянный адрес..." /><br>
+</label>
+        <label for="password">Пароль:<br>
+                <input type="password" id="password" name="password" required placeholder="Введите пароль..." ><br>
+              </label>
+              <div class="buttlon">
+                <button class="main-form-button buttlon" type="submit">Вход</a> </button>
+            </div>
+    </form>
+<!-- <form method="POST"class="container-block">
+        <h1>Авторизация</h1>
+        <div class="contact-form">
+          <label for="#">Адрес:<br>
+          <?php if (isset($error)) echo "<p>$error</p>"; ?>
+            <input type="email" id="email" name="email" placeholder="Введите постоянный адрес..." /><br>
+             </label>
+              <label for="password">Пароль:<br>
+                <input type="password" id="password" name="password" required placeholder="Введите пароль..." ><br>
+              </label>
+             <div class="buttlon">
+                <button class="main-form-button buttlon" type="#"><a href="заявления.html">Вход</a> </button>
+            </div>
+        </div>
+        
+      </form> -->
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+logout.php
+<?php
+session_start();
+session_destroy(); // Уничтожить сессию
+header("Location: admin_login.php"); // Перенаправление на страницу входа
+exit();
+?>
+
+
+
+
+
+
+register.php
+<?php
+session_start();
+include 'db.php'; // Подключение к базе данных
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $full_name = $_POST['full_name'];
+    $phone = $_POST['phone'];
+    $email = $_POST['email'];
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $department = $_POST['department'];
+
+    try {
+        $stmt = $pdo->prepare("INSERT INTO users (full_name, phone, email, password, department) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$full_name, $phone, $email, $password, $department]);
+        echo "Регистрация успешна!";
+    } catch (PDOException $e) {
+        if ($e->getCode() == 23000) {
+            echo "Ошибка регистрации. Этот email уже используется.";
+        } else {
+            echo "Ошибка регистрации: " . $e->getMessage();
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css.css">
+    <title>Регистрация</title>
+</head>
+<body>
+<div class="row">
+    <div class="upper">
+        <div class="upper-text">
+          <h2> Демо экзамен </h2>
+       </div>
+       <div class="a">
+        <a href="login.php"class="upper-text-a">Bход</a>
+        <a href="ad" class="upper-text-a-1">Панель админа</a>
+    </div>  
+      </div>
+</div>  
+<form method="post"class="container">
+    <h1>Регистрация</h1>
+    <div class="contact-form">
+        <label for="#">ФИО:<br>
+          <input type="text" name="full_name" placeholder="Введите ФИО..." required><br>
+         </label>
+         <label for="#"> Телефон:<br>
+         <input type="text" name="phone" placeholder="Телефон"><br>
+        </label>
+        <label for="#">Адрес:<br>
+        <input type="email" id="email" name="email" placeholder="Введите постоянный адрес..." /><br>
+         </label>
+         <label for="password">Пароль:<br>
+         <input type="password" id="password" name="password" required placeholder="Введите пароль..." ><br>
+       </label>
+        <select name="department" class="uppe-select"required><br> 
+                <option value="">Выберите отдел</option>
+                <option value="IT">IT</option>
+                <option value="HR">HR</option>
+                <option value="Sales">Sales</option>
+            </select><br>
+            <div class="buttlon">
+    <button type="submit" class="main-form-button buttlon">Зарегистрироваться</button>
+    </div>
+</form>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+requests.php
+<?php
+session_start();
+include 'db.php'; // Подключение к базе данных
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php"); // Перенаправление на страницу авторизации
+    exit();
+}
+
+$user_id = $_SESSION['user_id']; // Получаем ID пользователя из сессии
+
+// Получаем заявки пользователя
+$stmt = $pdo->prepare("SELECT * FROM requests WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$requests = $stmt->fetchAll(); // Получаем все заявки пользователя
+?>
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css.css">
+    <title>Мои заявки</title>
+</head>
+<body>
+<div class="row">
+    <div class="upper">
+        <div class="upper-text">
+          <h2> Демо экзамен </h2>
+       </div>
+       <div class="a">
+        <a href="login.php"class="upper-text-a">Bход</a>
+        <a href="" class="upper-text-a-1">Панель админа</a>
+    </div>  
+      </div>
+</div>
+    <div class="container-2">
+    <h1>Мои заявки</h1>
+    <div class="buttlon">
+    <a href="create_request.php"class="main-form-button buttlon">Создать новую заявку</a>
+    </div>
+    <ul>
+        <?php foreach ($requests as $request): ?>
+            <li>
+                <strong>Категория:</strong> <?= htmlspecialchars($request['category']) ?>, 
+                <strong>Статус:</strong> <?= htmlspecialchars($request['status']) ?>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+    </div>
+</body>
+</html>
+
+Найти еще
